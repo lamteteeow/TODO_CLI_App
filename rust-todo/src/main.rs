@@ -1,5 +1,9 @@
 // This script using "ncurses" is to compare with python-todo app using "click" in CLI
 use ncurses::*;
+use std::env;
+use std::fs::File;
+use std::io::Write;
+use std::process;
 
 const REGULAR_PAIR: i16 = 0;
 const HIGHLIGHT_PAIR: i16 = 1;
@@ -53,9 +57,22 @@ impl Ui {
     }
 }
 
-enum Tab {
+enum Status {
     Done,
     Todo,
+}
+
+impl Status {
+    fn toggle(&self) -> Self {
+        match self {
+            Status::Done => Status::Todo,
+            Status::Todo => Status::Done,
+        }
+    }
+}
+
+fn parse_item(line: &str) -> Option<(Status, &str)> {
+    todo!()
 }
 
 fn list_up(list_curr: &mut usize) {
@@ -85,12 +102,34 @@ fn list_transfer(
 
 // TODO: add new items
 // TODO: edit items
+// TODO: delete items
 // TODO: highlight importance base on keyinput 1-5
 // TODO: save! => keep track of state
 // TODO: undo system
 // TODO: track date when moved to DONE
 
 fn main() {
+    let mut args = env::args();
+    let file_path = {
+        match args.next() {
+            Some(file_path) => file_path,
+            None => {
+                eprint!("Usage: todo-rs <file-path>");
+                eprint!("ERROR: FILE PATH NOT PROVIDED!");
+                process::exit(1);
+            }
+        }
+    };
+
+    let mut todos = Vec::<String>::new();
+    let mut todo_curr: usize = 0;
+    let mut dones = Vec::<String>::new();
+    let mut done_curr: usize = 0;
+
+    {
+        let file = File::open(file_path).unwrap();
+    }
+
     initscr();
     noecho();
     curs_set(CURSOR_VISIBILITY::CURSOR_INVISIBLE);
@@ -101,38 +140,27 @@ fn main() {
 
     let mut quit = false;
 
-    let mut todos: Vec<String> = vec![
-        "first".to_string(),
-        "second".to_string(),
-        "third".to_string(),
-    ];
-    let mut todo_curr: usize = 0;
-    let mut dones: Vec<String> = vec![
-        "fourth".to_string(),
-        "fifth".to_string(),
-        "sixth".to_string(),
-    ];
-    let mut done_curr: usize = 0;
+    // let mut todos: Vec<String> = vec![
+    //     "first".to_string(),
+    //     "second".to_string(),
+    //     "third".to_string(),
+    // ];
+    // let mut dones: Vec<String> = vec![
+    //     "fourth".to_string(),
+    //     "fifth".to_string(),
+    //     "sixth".to_string(),
+    // ];
 
     let mut ui = Ui::default();
 
-    let mut focus = Tab::Todo;
-
-    impl Tab {
-        fn toggle(&self) -> Self {
-            match self {
-                Tab::Todo => Tab::Done,
-                Tab::Done => Tab::Todo,
-            }
-        }
-    }
+    let mut tab = Status::Todo;
 
     while !quit {
         erase();
         ui.begin(0, 0);
         {
-            match focus {
-                Tab::Todo => {
+            match tab {
+                Status::Todo => {
                     ui.label("[TODO]  DONE", REGULAR_PAIR);
                     ui.label("----------------------------", REGULAR_PAIR);
                     ui.begin_list(todo_curr); //& borrow is fine
@@ -143,7 +171,7 @@ fn main() {
 
                     ui.label("----------------------------", REGULAR_PAIR);
                 }
-                Tab::Done => {
+                Status::Done => {
                     ui.label(" TODO  [DONE]", REGULAR_PAIR);
                     ui.label("----------------------------", REGULAR_PAIR);
                     ui.begin_list(done_curr);
@@ -162,20 +190,30 @@ fn main() {
         let key = getch();
         match key as u8 as char {
             'q' => quit = true,
-            'w' => match focus {
-                Tab::Todo => list_up(&mut todo_curr),
-                Tab::Done => list_up(&mut done_curr),
+            'e' => {
+                // Will not create and override existed file => No updates
+                let mut file = File::create("TODO").unwrap();
+                for todo in todos.iter() {
+                    writeln!(file, "TODO: {}", todo);
+                }
+                for done in todos.iter() {
+                    writeln!(file, "DONE: {}", done);
+                }
+            }
+            'w' => match tab {
+                Status::Todo => list_up(&mut todo_curr),
+                Status::Done => list_up(&mut done_curr),
             },
-            's' => match focus {
-                Tab::Todo => list_down(&todos, &mut todo_curr),
-                Tab::Done => list_down(&dones, &mut done_curr),
+            's' => match tab {
+                Status::Todo => list_down(&todos, &mut todo_curr),
+                Status::Done => list_down(&dones, &mut done_curr),
             },
-            '\n' => match focus {
-                Tab::Todo => list_transfer(&mut dones, &mut todos, &mut todo_curr),
-                Tab::Done => list_transfer(&mut todos, &mut dones, &mut done_curr),
+            '\n' => match tab {
+                Status::Todo => list_transfer(&mut dones, &mut todos, &mut todo_curr),
+                Status::Done => list_transfer(&mut todos, &mut dones, &mut done_curr),
             },
             '\t' => {
-                focus = focus.toggle();
+                tab = tab.toggle();
             }
             _ => {}
         }
