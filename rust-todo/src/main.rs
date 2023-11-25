@@ -1,63 +1,172 @@
 // This script using "ncurses" is to compare with python-todo app using "click" in CLI
 use ncurses::*;
+use std::cmp;
 use std::env;
 use std::fs::File;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{self, BufRead, BufReader, ErrorKind, Write};
+use std::ops::{Add, Mul};
 use std::process;
 
 const REGULAR_PAIR: i16 = 0;
 const HIGHLIGHT_PAIR: i16 = 1;
 
-type Id = usize;
+// type Id = usize;
+
+enum LayoutKind {
+    Vert,
+    Hori,
+}
+
+struct Layout {
+    kind: LayoutKind,
+    pos: Vec2,
+    size: Vec2,
+}
+
+impl Layout {
+    fn available_pos(&self) -> Vec2 {
+        use LayoutKind::*;
+        match self.kind {
+            Hori => self.pos + self.size * Vec2::new(1, 0),
+            Vert => self.pos + self.size * Vec2::new(0, 1),
+        }
+    }
+
+    fn add_widget(&mut self, size: Vec2) {
+        use LayoutKind::*;
+        match self.kind {
+            Hori => {
+                self.size.x += size.x;
+                self.size.y = cmp::max(self.size.y, size.y);
+            }
+            Vert => {
+                self.size.x = cmp::max(self.size.x, size.x);
+                self.size.y += size.y;
+            }
+        }
+    }
+}
+
+#[derive(Default, Copy, Clone)]
+struct Vec2 {
+    y: i32,
+    x: i32,
+}
+
+impl Vec2 {
+    fn new(x: i32, y: i32) -> Self {
+        Self { x, y }
+    }
+}
+
+impl Add for Vec2 {
+    type Output = Self;
+
+    fn add(self, rhs: Vec2) -> Vec2 {
+        Vec2 {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl Mul for Vec2 {
+    type Output = Self;
+
+    fn mul(self, rhs: Vec2) -> Vec2 {
+        Vec2 {
+            x: self.x * rhs.x,
+            y: self.y * rhs.y,
+        }
+    }
+}
 
 #[derive(Default)]
 struct Ui {
-    list_curr: Option<Id>,
-    row: usize,
-    col: usize,
+    // list_curr: Option<Id>,
+    layouts_stack: Vec<Layout>,
 }
 
 impl Ui {
-    fn begin(&mut self, row: usize, col: usize) {
-        self.row = row;
-        self.col = col;
+    fn begin(&mut self, pos: Vec2, kind: LayoutKind) {
+        assert!(self.layouts_stack.is_empty());
+        self.layouts_stack.push(Layout {
+            kind,
+            pos,
+            size: Vec2::new(0, 0),
+        });
+    }
+
+    fn begin_layout(&mut self, kind: LayoutKind) {
+        let layout = self
+            .layouts_stack
+            .last()
+            .expect("Can not create a layout outside of UI::begin() and UI::end()");
+        let pos = layout.available_pos();
+        self.layouts_stack.push(Layout {
+            kind,
+            pos,
+            size: Vec2::new(0, 0),
+        });
     }
 
     fn label(&mut self, text: &str, pair: i16) {
-        mv(self.row as i32, self.col as i32);
+        let layout = self
+            .layouts_stack
+            .last_mut()
+            .expect("Trying to render label outside of any layout");
+        let pos = layout.available_pos();
+
+        mv(pos.y, pos.x);
         attron(COLOR_PAIR(pair));
         addstr(text);
         attroff(COLOR_PAIR(pair));
-        self.row += 1;
+
+        layout.add_widget(Vec2::new(text.len() as i32, 1));
     }
 
-    fn end(&mut self) {}
-
-    fn begin_list(&mut self, id: Id) {
-        assert!(self.list_curr.is_none(), "Nested lists are not allowed!");
-        self.list_curr = Some(id);
+    fn end_layout(&mut self) {
+        let layout = self
+            .layouts_stack
+            .pop()
+            .expect("Unbalanced UI::begin_layout() and UI::end_layout()");
+        self.layouts_stack
+            .last_mut()
+            .expect("Unbalanced UI::begin() and UI::end() calls.")
+            .add_widget(layout.size);
     }
 
-    fn list_element(&mut self, label: &str, id: Id) -> bool {
-        let id_curr = self
-            .list_curr
-            .expect("Not allowed to create list elements outside of lists");
-        self.label(label, {
-            if id_curr == id {
-                HIGHLIGHT_PAIR
-            } else {
-                REGULAR_PAIR
-            }
-        });
-        return false;
+    fn end(&mut self) {
+        self.layouts_stack
+            .pop()
+            .expect("Unbalanced UI::begin() and UI::end() calls.");
     }
 
-    fn end_list(&mut self) {
-        self.list_curr = None;
-    }
+    // fn begin_list(&mut self, id: Id) {
+    //     assert!(self.list_curr.is_none(), "Nested lists are not allowed!");
+    //     self.list_curr = Some(id);
+    // }
+
+    // fn list_element(&mut self, label: &str, id: Id) -> bool {
+    //     let id_curr = self
+    //         .list_curr
+    //         .expect("Not allowed to create list elements outside of lists");
+    //     self.label(label, {
+    //         if id_curr == id {
+    //             HIGHLIGHT_PAIR
+    //         } else {
+    //             REGULAR_PAIR
+    //         }
+    //     });
+    //     return false;
+    // }
+
+    // fn end_list(&mut self) {
+    //     self.list_curr = None;
+    // }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum Status {
     Done,
     Todo,
@@ -73,17 +182,24 @@ impl Status {
 }
 
 fn parse_item(line: &str) -> Option<(Status, &str)> {
-    let todo_prefix = "TODO: ";
-    let done_prefix = "DONE: ";
+    // let todo_prefix = "TODO: ";
+    // let done_prefix = "DONE: ";
 
-    if line.starts_with(todo_prefix) {
-        return Some((Status::Todo, &line[todo_prefix.len()..]));
-    }
+    // if line.starts_with(todo_prefix) {
+    //     return Some((Status::Todo, &line[todo_prefix.len()..]));
+    // }
 
-    if line.starts_with(done_prefix) {
-        return Some((Status::Done, &line[done_prefix.len()..]));
-    }
-    return None;
+    // if line.starts_with(done_prefix) {
+    //     return Some((Status::Done, &line[done_prefix.len()..]));
+    // }
+    // return None;
+    let todo_item = line
+        .strip_prefix("TODO: ")
+        .map(|title| (Status::Todo, title));
+    let done_item = line
+        .strip_prefix("DONE: ")
+        .map(|title| (Status::Done, title));
+    todo_item.or(done_item)
 }
 
 fn list_up(list_curr: &mut usize) {
@@ -105,13 +221,13 @@ fn list_transfer(
 ) {
     if *list_src_curr < list_src.len() {
         list_dst.push(list_src.remove(*list_src_curr));
-        if *list_src_curr > 0 {
-            *list_src_curr -= 1;
+        if *list_src_curr >= list_src.len() && !list_src.is_empty() {
+            *list_src_curr = list_src.len() - 1;
         }
     }
 }
 
-fn load_state(todos: &mut Vec<String>, dones: &mut Vec<String>, file_path: &str) {
+fn load_state(todos: &mut Vec<String>, dones: &mut Vec<String>, file_path: &str) -> io::Result<()> {
     let file = File::open(file_path).unwrap(); //open() by default borrows file_path already
     for (index, line) in BufReader::new(file).lines().enumerate() {
         match parse_item(&line.unwrap()) {
@@ -123,6 +239,7 @@ fn load_state(todos: &mut Vec<String>, dones: &mut Vec<String>, file_path: &str)
             }
         }
     }
+    Ok(())
 }
 
 fn save_state(todos: &Vec<String>, dones: &Vec<String>, file_path: &str) {
@@ -139,7 +256,7 @@ fn save_state(todos: &Vec<String>, dones: &Vec<String>, file_path: &str) {
 // TODO: edit items
 // TODO: delete items
 // TODO: highlight importance base on keyinput 1-5
-// TODO: save! => keep track of state [especially on SIGINT (Ctrl C)]
+// TODO: keep state on SIGINT (Ctrl C)
 // TODO: undo system
 // TODO: track date when moved to DONE
 
@@ -163,7 +280,22 @@ fn main() {
     let mut dones = Vec::<String>::new();
     let mut done_curr: usize = 0;
 
-    load_state(&mut todos, &mut dones, &file_path);
+    let mut notification: String;
+
+    // load_state(&mut todos, &mut dones, &file_path);
+    match load_state(&mut todos, &mut dones, &file_path) {
+        Ok(()) => notification = format!("Loaded file {}", file_path),
+        Err(error) => {
+            if error.kind() == ErrorKind::NotFound {
+                notification = format!("New file {}", file_path)
+            } else {
+                panic!(
+                    "Could not load state from file `{}`: {:?}",
+                    file_path, error
+                );
+            }
+        }
+    };
 
     initscr();
     noecho();
@@ -192,36 +324,54 @@ fn main() {
 
     while !quit {
         erase();
-        ui.begin(0, 0);
+
+        ui.begin(Vec2::new(0, 0), LayoutKind::Hori);
         {
-            match tab {
-                Status::Todo => {
-                    ui.label("[TODO]  DONE", REGULAR_PAIR);
-                    ui.label("----------------------------", REGULAR_PAIR);
-                    ui.begin_list(todo_curr); //& borrow is fine
-                    for (index, todo) in todos.iter().enumerate() {
-                        ui.list_element(&format!("- [ ] {}", todo), index);
-                    }
-                    ui.end_list();
-
-                    ui.label("----------------------------", REGULAR_PAIR);
-                }
-                Status::Done => {
-                    ui.label(" TODO  [DONE]", REGULAR_PAIR);
-                    ui.label("----------------------------", REGULAR_PAIR);
-                    ui.begin_list(done_curr);
-                    for (index, done) in dones.iter().enumerate() {
-                        ui.list_element(&format!("- [x] {}", done), index);
-                    }
-                    ui.end_list();
-
-                    ui.label("----------------------------", REGULAR_PAIR);
+            ui.begin_layout(LayoutKind::Vert);
+            {
+                ui.label("TODO", REGULAR_PAIR);
+                // ui.label("----------------------------", REGULAR_PAIR);
+                // ui.begin_list(todo_curr); //& borrow is fine
+                for (index, todo) in todos.iter().enumerate() {
+                    ui.label(
+                        &format!("- [ ] {}", todo),
+                        if index == todo_curr && tab == Status::Todo {
+                            HIGHLIGHT_PAIR
+                        } else {
+                            REGULAR_PAIR
+                        },
+                    );
                 }
             }
+            ui.end_layout();
+
+            // ui.end_list();
+
+            // ui.label("----------------------------", REGULAR_PAIR);
+            ui.begin_layout(LayoutKind::Vert);
+            {
+                ui.label("DONE", REGULAR_PAIR);
+                // ui.label("----------------------------", REGULAR_PAIR);
+                // ui.begin_list(done_curr);
+                for (index, done) in dones.iter().enumerate() {
+                    ui.label(
+                        &format!("- [x] {}", done),
+                        if index == todo_curr && tab == Status::Done {
+                            HIGHLIGHT_PAIR
+                        } else {
+                            REGULAR_PAIR
+                        },
+                    );
+                }
+                // ui.end_list();
+            }
+            ui.end_layout();
+            // ui.label("----------------------------", REGULAR_PAIR);
         }
         ui.end();
 
         refresh();
+
         let key = getch();
         match key as u8 as char {
             'q' => quit = true,
