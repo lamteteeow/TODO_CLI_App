@@ -110,7 +110,7 @@ impl Ui {
         });
     }
 
-    fn label(&mut self, text: &str, pair: i16) {
+    fn label_fixed_width(&mut self, text: &str, width: i32, pair: i16) {
         let layout = self
             .layouts_stack
             .last_mut()
@@ -122,7 +122,7 @@ impl Ui {
         addstr(text);
         attroff(COLOR_PAIR(pair));
 
-        layout.add_widget(Vec2::new(text.len() as i32, 1));
+        layout.add_widget(Vec2::new(width as i32, 1));
     }
 
     fn end_layout(&mut self) {
@@ -140,6 +140,10 @@ impl Ui {
         self.layouts_stack
             .pop()
             .expect("Unbalanced UI::begin() and UI::end() calls.");
+    }
+
+    fn label(&mut self, text: &str, pair: i16) {
+        self.label_fixed_width(text, text.len() as i32, pair);
     }
 
     // fn begin_list(&mut self, id: Id) {
@@ -208,9 +212,24 @@ fn list_up(list_curr: &mut usize) {
     }
 }
 
-fn list_down(list: &Vec<String>, list_curr: &mut usize) {
+fn list_down(list: &[String], list_curr: &mut usize) {
     if *list_curr + 1 < list.len() {
         *list_curr += 1
+    }
+}
+
+fn list_drag_up(list: &mut [String], list_curr: &mut usize) {
+    if *list_curr > 0 {
+        list.swap(*list_curr, *list_curr - 1);
+        *list_curr -= 1;
+    }
+}
+
+fn list_drag_down(list: &mut [String], list_curr: &mut usize) {
+    // Risk of overflow when usize = max
+    if *list_curr + 1 < list.len() {
+        list.swap(*list_curr, *list_curr + 1);
+        *list_curr += 1;
     }
 }
 
@@ -242,7 +261,7 @@ fn load_state(todos: &mut Vec<String>, dones: &mut Vec<String>, file_path: &str)
     Ok(())
 }
 
-fn save_state(todos: &Vec<String>, dones: &Vec<String>, file_path: &str) {
+fn save_state(todos: &[String], dones: &[String], file_path: &str) {
     let mut file = File::create(&file_path).unwrap();
     for todo in todos.iter() {
         writeln!(file, "TODO: {}", todo).unwrap();
@@ -320,22 +339,35 @@ fn main() {
 
     let mut ui = Ui::default();
 
-    let mut tab = Status::Todo;
+    let mut panel = Status::Todo;
 
     while !quit {
         erase();
+
+        let mut y = 0;
+        let mut x = 0;
+        getmaxyx(stdscr(), &mut y, &mut x); //get terminal size and assign to y and x
 
         ui.begin(Vec2::new(0, 0), LayoutKind::Hori);
         {
             ui.begin_layout(LayoutKind::Vert);
             {
-                ui.label("TODO", REGULAR_PAIR);
+                ui.label_fixed_width(
+                    "TODO",
+                    x / 2,
+                    if panel == Status::Todo {
+                        HIGHLIGHT_PAIR
+                    } else {
+                        REGULAR_PAIR
+                    },
+                );
                 // ui.label("----------------------------", REGULAR_PAIR);
                 // ui.begin_list(todo_curr); //& borrow is fine
                 for (index, todo) in todos.iter().enumerate() {
-                    ui.label(
+                    ui.label_fixed_width(
                         &format!("- [ ] {}", todo),
-                        if index == todo_curr && tab == Status::Todo {
+                        x / 2,
+                        if index == todo_curr && panel == Status::Todo {
                             HIGHLIGHT_PAIR
                         } else {
                             REGULAR_PAIR
@@ -350,13 +382,22 @@ fn main() {
             // ui.label("----------------------------", REGULAR_PAIR);
             ui.begin_layout(LayoutKind::Vert);
             {
-                ui.label("DONE", REGULAR_PAIR);
+                ui.label_fixed_width(
+                    "DONE",
+                    x / 2,
+                    if panel == Status::Done {
+                        HIGHLIGHT_PAIR
+                    } else {
+                        REGULAR_PAIR
+                    },
+                );
                 // ui.label("----------------------------", REGULAR_PAIR);
                 // ui.begin_list(done_curr);
                 for (index, done) in dones.iter().enumerate() {
-                    ui.label(
+                    ui.label_fixed_width(
                         &format!("- [x] {}", done),
-                        if index == todo_curr && tab == Status::Done {
+                        x / 2,
+                        if index == done_curr && panel == Status::Done {
                             HIGHLIGHT_PAIR
                         } else {
                             REGULAR_PAIR
@@ -385,20 +426,28 @@ fn main() {
             //         writeln!(file, "DONE: {}", done);
             //     }
             // }
-            'w' => match tab {
+            'w' => match panel {
                 Status::Todo => list_up(&mut todo_curr),
                 Status::Done => list_up(&mut done_curr),
             },
-            's' => match tab {
+            's' => match panel {
                 Status::Todo => list_down(&todos, &mut todo_curr),
                 Status::Done => list_down(&dones, &mut done_curr),
             },
-            '\n' => match tab {
+            'W' => match panel {
+                Status::Todo => list_drag_up(&mut todos, &mut todo_curr),
+                Status::Done => list_drag_up(&mut dones, &mut done_curr),
+            },
+            'S' => match panel {
+                Status::Todo => list_drag_down(&mut todos, &mut todo_curr),
+                Status::Done => list_drag_down(&mut dones, &mut done_curr),
+            },
+            '\n' => match panel {
                 Status::Todo => list_transfer(&mut dones, &mut todos, &mut todo_curr),
                 Status::Done => list_transfer(&mut todos, &mut dones, &mut done_curr),
             },
             '\t' => {
-                tab = tab.toggle();
+                panel = panel.toggle();
             }
             _ => {}
         }
