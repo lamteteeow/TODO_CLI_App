@@ -1,0 +1,33 @@
+Trying to set up in Windows but did not go anywhere:
+# Created this file:
+#     - type nul > SetupLog3_1.txt (failed but worked ???)
+# Created a function name "sudo" as an alias for "runas" command in power shell:
+#     - $script_path="$HOME\Documents\Scripts"; if (!(test-path $script_path)) {New-Item -ItemType directory $script_path} if (!(test-path $profile)) { new-item -path $profile -itemtype file -force }". $script_path\sudo.ps1" | Out-File $profile -append; "function sudo(){if (`$args.Length -eq 1){start-process `$args[0] -verb `"runAs`"} if (`$args.Length -gt 1){start-process `$args[0] -ArgumentList `$args[1..`$args.Length] -verb `"runAs`"}}" | Out-File $script_path\sudo.ps1; powershell
+#     + same failure lmao i hate powershell :v :v
+# 
+# Make sure MSVC installed with Builder Tool C++ (easy way is through Visual Studio)
+# Make sure to get [.cargo, Cargo.toml, src/rust_todo, src/TODO] into this folder
+# Change build target in .cargo/config.toml to ["x86_64-pc-windows-msvc"] to  and run:
+#     - cargo run TODO
+#     + Failed cuz ncurses does not support windows
+#     + Details:  * ncurses-backend (default): uses the ncurses-rs library directly. Currently only compatible on Linux and macOS. Requires ncurses to be installed on the system.
+#                 * pancurses-backend: uses the pancurses library, which forwards calls to ncurses-rs on Linux/macOS or pdcurses-sys on Windows. Requires ncurses to be installed on the system.
+#                
+#                It was casually mentioned in the Backends wiki page. Use pancurses instead, which supports Unix and Windows, by adding the following to Cargo.toml.
+#                     [dependencies.cursive]
+#                     version = "0.12"
+#                     default-features = false
+#                     features = ["pancurses-backend"]
+#     + Still some kind of error[E0432]: unresolved import `syn::export`
+
+=> Trying to build in WSL linux with target as: x86_64-pc-windows-gnu
+=> x86_64-w64-mingw32-gcc is required on host machine: https://www.mingw-w64.org/downloads/
+=> Here I chose MSYS2: https://www.msys2.org/
+=> Run MSYS2 as admin to install gcc:
+    - pacman -S mingw-w64-ucrt-x86_64-gcc
+=> Add linker flag to [target.x86_64-pc-windows-gnu] as x86_64-w64-mingw32-gcc (in config.toml for better workspace management)
++ Apparently I need to install mingw-w64 in WSL Ubuntu instead:
+    - sudo apt-get install mingw-w64
+
+=> Add [target.'cfg(target_os = "windows")'.dependencies] and [target.'cfg(target_os = "linux")'.dependencies] for specific dependencies (in Cargo.toml)
+=> Add default-run = "a" to [package] (in Cargo.toml)

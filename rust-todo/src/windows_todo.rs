@@ -1,5 +1,5 @@
 // This script using "ncurses" is to compare with python-todo app using "click" in CLI
-use ncurses::*;
+use pancurses::*;
 use std::cmp;
 use std::env;
 use std::fs::File;
@@ -117,7 +117,7 @@ impl Ui {
             .expect("Trying to render label outside of any layout");
         let pos = layout.available_pos();
 
-        mv(pos.y, pos.x);
+        move(pos.y, pos.x);
         attron(COLOR_PAIR(pair));
         addstr(text);
         attroff(COLOR_PAIR(pair));
@@ -281,6 +281,10 @@ fn save_state(todos: &[String], dones: &[String], file_path: &str) {
 
 fn main() {
     let mut args = env::args();
+    // not default-run, cargo run --bin windows_todo TODO => skip 4 args
+    args.next().unwrap();
+    args.next().unwrap();
+    args.next().unwrap();
     args.next().unwrap();
 
     let file_path = {
@@ -316,13 +320,13 @@ fn main() {
         }
     };
 
-    initscr();
+    let window = initscr();
     noecho();
     curs_set(CURSOR_VISIBILITY::CURSOR_INVISIBLE);
 
     start_color();
-    init_pair(REGULAR_PAIR, COLOR_WHITE, COLOR_BLACK);
-    init_pair(HIGHLIGHT_PAIR, COLOR_BLACK, COLOR_WHITE);
+    init_pair(REGULAR_PAIR as i16, COLOR_WHITE, COLOR_BLACK);
+    init_pair(HIGHLIGHT_PAIR as i16, COLOR_BLACK, COLOR_WHITE);
 
     let mut quit = false;
 
@@ -342,7 +346,7 @@ fn main() {
     let mut panel = Status::Todo;
 
     while !quit {
-        erase();
+        window.erase();
 
         let mut y = 0;
         let mut x = 0;
@@ -411,11 +415,11 @@ fn main() {
         }
         ui.end();
 
-        refresh();
+        window.refresh();
 
-        let key = getch();
-        match key as u8 as char {
-            'q' => quit = true,
+        let key = window.getch();
+        match key {
+            Some(Input::Character(q)) => quit = true,
             // 'e' => {
             //     // Will not create and override existed file => No updates
             //     let mut file = File::create("TODO").unwrap();
@@ -426,27 +430,27 @@ fn main() {
             //         writeln!(file, "DONE: {}", done);
             //     }
             // }
-            'w' => match panel {
+            Some(Input::Character(w)) => match panel {
                 Status::Todo => list_up(&mut todo_curr),
                 Status::Done => list_up(&mut done_curr),
             },
-            's' => match panel {
+            Some(Input::Character(s)) => match panel {
                 Status::Todo => list_down(&todos, &mut todo_curr),
                 Status::Done => list_down(&dones, &mut done_curr),
             },
-            'W' => match panel {
+            Some(Input::Character(W)) => match panel {
                 Status::Todo => list_drag_up(&mut todos, &mut todo_curr),
                 Status::Done => list_drag_up(&mut dones, &mut done_curr),
             },
-            'S' => match panel {
+            Some(Input::Character(S)) => match panel {
                 Status::Todo => list_drag_down(&mut todos, &mut todo_curr),
                 Status::Done => list_drag_down(&mut dones, &mut done_curr),
             },
-            '\n' => match panel {
+            Some(Input::Character('\n')) => match panel {
                 Status::Todo => list_transfer(&mut dones, &mut todos, &mut todo_curr),
                 Status::Done => list_transfer(&mut todos, &mut dones, &mut done_curr),
             },
-            '\t' => {
+            Some(Input::Character('\t')) => {
                 panel = panel.toggle();
             }
             _ => {}
