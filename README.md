@@ -14,20 +14,21 @@
 
 ### On Linux: Run in rust directory
 
-- External dependencies: ncurses
-
 ```console
     cargo run TODO
 ```
 
+- External dependencies: ncurses
+
 ### On Windows: Run in rust-todo/official-v1
 
-- External dependencies: pancurses (which points to PDcurses for windows and ncurses for linux)
 ![Windows_v1](/rust-todo/official-v1/TODOwin-app.png?raw=true "Running on Windows terminal")
 
 ```console
     windows_todo.exe TODO
 ```
+
+- External dependencies: pancurses (which points to PDcurses for windows and ncurses for linux)
 
 ### Controls
 
@@ -40,6 +41,6 @@
 |<kbd>g</kbd>, <kbd>G</kbd> | Jump to the start, end of the current item list, to be implemented|
 |<kbd>r</kbd>|Rename the current item, to be implemented|
 |<kbd>i</kbd>|Insert a new item, to be implemented|
-|<kbd>d</kbd>|Delete the current item, to be implemented|
+|<kbd>Shift+D</kbd>|Delete the current item, to be implemented|
 |<kbd>Enter</kbd>|Perform an action on the highlighted UI element, to be implemented|
 |<kbd>Num1-5</kbd>|Perform an action to mark priorities' colors of items (TODO), to be implemented|
