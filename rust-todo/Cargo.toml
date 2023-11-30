@@ -8,7 +8,7 @@ default-run = "linux_todo" # src/linux_todo.rs
 
 [dependencies]
 #(points to either ncurses or pdcurses-sys respectively)
-pancurses = { version = "0.17.0", features = ["win32"] }  
+pancurses = { version = "0.17.0", features = ["win32a"] }  
 
 [[bin]]
 name = "windows_todo"
@@ -19,8 +19,7 @@ name = "linux_todo"
 path = "src/linux_todo.rs"
 
 
-[target.'cfg(target_os = "windows")'.dependencies]
-pdcurses-sys = "0.7.1"
+# [target.'cfg(target_os = "windows")'.dependencies]
 
 [target.'cfg(target_os = "linux")'.dependencies]
 ncurses = "5.101.0"

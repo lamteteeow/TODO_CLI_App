@@ -7,8 +7,9 @@ use std::io::{self, BufRead, BufReader, ErrorKind, Write};
 use std::ops::{Add, Mul};
 use std::process;
 
-const REGULAR_PAIR: i16 = 0;
-const HIGHLIGHT_PAIR: i16 = 1;
+const REGULAR_PAIR: u32 = 0;
+const HIGHLIGHT_PAIR: u32 = 1;
+const CURSOR_INVISIBILITY: i32 = 0;
 
 // type Id = usize;
 
@@ -110,17 +111,17 @@ impl Ui {
         });
     }
 
-    fn label_fixed_width(&mut self, text: &str, width: i32, pair: i16) {
+    fn label_fixed_width(&mut self, text: &str, width: i32, pair: u32, window: &Window) {
         let layout = self
             .layouts_stack
             .last_mut()
             .expect("Trying to render label outside of any layout");
         let pos = layout.available_pos();
 
-        move(pos.y, pos.x);
-        attron(COLOR_PAIR(pair));
-        addstr(text);
-        attroff(COLOR_PAIR(pair));
+        window.mv(pos.y, pos.x);
+        window.attron(COLOR_PAIR(pair as u64));
+        window.addstr(text);
+        window.attroff(COLOR_PAIR(pair as u64));
 
         layout.add_widget(Vec2::new(width as i32, 1));
     }
@@ -142,8 +143,9 @@ impl Ui {
             .expect("Unbalanced UI::begin() and UI::end() calls.");
     }
 
-    fn label(&mut self, text: &str, pair: i16) {
-        self.label_fixed_width(text, text.len() as i32, pair);
+    #[allow(dead_code)]
+    fn label(&mut self, text: &str, pair: u32, window: &Window) {
+        self.label_fixed_width(text, text.len() as i32, pair, window);
     }
 
     // fn begin_list(&mut self, id: Id) {
@@ -281,10 +283,6 @@ fn save_state(todos: &[String], dones: &[String], file_path: &str) {
 
 fn main() {
     let mut args = env::args();
-    // not default-run, cargo run --bin windows_todo TODO => skip 4 args
-    args.next().unwrap();
-    args.next().unwrap();
-    args.next().unwrap();
     args.next().unwrap();
 
     let file_path = {
@@ -322,7 +320,7 @@ fn main() {
 
     let window = initscr();
     noecho();
-    curs_set(CURSOR_VISIBILITY::CURSOR_INVISIBLE);
+    curs_set(CURSOR_INVISIBILITY);
 
     start_color();
     init_pair(REGULAR_PAIR as i16, COLOR_WHITE, COLOR_BLACK);
@@ -348,9 +346,9 @@ fn main() {
     while !quit {
         window.erase();
 
-        let mut y = 0;
-        let mut x = 0;
-        getmaxyx(stdscr(), &mut y, &mut x); //get terminal size and assign to y and x
+        // let mut y = 0;
+        // let mut x = 0;
+        let yx = window.get_max_yx(); //get terminal size and assign to y and x
 
         ui.begin(Vec2::new(0, 0), LayoutKind::Hori);
         {
@@ -358,24 +356,26 @@ fn main() {
             {
                 ui.label_fixed_width(
                     "TODO",
-                    x / 2,
+                    yx.1 / 2,
                     if panel == Status::Todo {
                         HIGHLIGHT_PAIR
                     } else {
                         REGULAR_PAIR
                     },
+                    &window,
                 );
                 // ui.label("----------------------------", REGULAR_PAIR);
                 // ui.begin_list(todo_curr); //& borrow is fine
                 for (index, todo) in todos.iter().enumerate() {
                     ui.label_fixed_width(
                         &format!("- [ ] {}", todo),
-                        x / 2,
+                        yx.1 / 2,
                         if index == todo_curr && panel == Status::Todo {
                             HIGHLIGHT_PAIR
                         } else {
                             REGULAR_PAIR
                         },
+                        &window,
                     );
                 }
             }
@@ -388,24 +388,26 @@ fn main() {
             {
                 ui.label_fixed_width(
                     "DONE",
-                    x / 2,
+                    yx.1 / 2,
                     if panel == Status::Done {
                         HIGHLIGHT_PAIR
                     } else {
                         REGULAR_PAIR
                     },
+                    &window,
                 );
                 // ui.label("----------------------------", REGULAR_PAIR);
                 // ui.begin_list(done_curr);
                 for (index, done) in dones.iter().enumerate() {
                     ui.label_fixed_width(
                         &format!("- [x] {}", done),
-                        x / 2,
+                        yx.1 / 2,
                         if index == done_curr && panel == Status::Done {
                             HIGHLIGHT_PAIR
                         } else {
                             REGULAR_PAIR
                         },
+                        &window,
                     );
                 }
                 // ui.end_list();
@@ -419,7 +421,7 @@ fn main() {
 
         let key = window.getch();
         match key {
-            Some(Input::Character(q)) => quit = true,
+            Some(Input::Character('q')) => quit = true,
             // 'e' => {
             //     // Will not create and override existed file => No updates
             //     let mut file = File::create("TODO").unwrap();
@@ -430,19 +432,19 @@ fn main() {
             //         writeln!(file, "DONE: {}", done);
             //     }
             // }
-            Some(Input::Character(w)) => match panel {
+            Some(Input::Character('w')) => match panel {
                 Status::Todo => list_up(&mut todo_curr),
                 Status::Done => list_up(&mut done_curr),
             },
-            Some(Input::Character(s)) => match panel {
+            Some(Input::Character('s')) => match panel {
                 Status::Todo => list_down(&todos, &mut todo_curr),
                 Status::Done => list_down(&dones, &mut done_curr),
             },
-            Some(Input::Character(W)) => match panel {
+            Some(Input::Character('W')) => match panel {
                 Status::Todo => list_drag_up(&mut todos, &mut todo_curr),
                 Status::Done => list_drag_up(&mut dones, &mut done_curr),
             },
-            Some(Input::Character(S)) => match panel {
+            Some(Input::Character('S')) => match panel {
                 Status::Todo => list_drag_down(&mut todos, &mut todo_curr),
                 Status::Done => list_drag_down(&mut dones, &mut done_curr),
             },

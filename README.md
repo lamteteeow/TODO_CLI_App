@@ -1,9 +1,5 @@
 # todo-app
 
-This repo is mostly just to track self-learning progress in Rust
-
-Following instructions from git@tsoding for Rust and NeuralNine for Python
-
 ## Simple Terminal Todo app in Python
 
 - library used: click
@@ -13,11 +9,24 @@ Following instructions from git@tsoding for Rust and NeuralNine for Python
 ## Interactive Terminal Todo app in Rust
 
 - simple UI implemented for interacting within Terminal
+- .cargo/config.toml needs to be modified for windows to build windows binary (.exe)
+- v1: basic commands only
 
-### Run in rust directory
+### On Linux: Run in rust directory
+
+- External dependencies: ncurses
 
 ```console
     cargo run TODO
+```
+
+### On Windows: Run in rust-todo/official-v1
+
+- External dependencies: pancurses (which points to PDcurses for windows and ncurses for linux)
+![Windows_v1](/rust-todo/official-v1/TODOwin-app.png?raw=true "Running on Windows terminal")
+
+```console
+    windows_todo.exe TODO
 ```
 
 ### Controls
@@ -34,5 +43,3 @@ Following instructions from git@tsoding for Rust and NeuralNine for Python
 |<kbd>d</kbd>|Delete the current item, to be implemented|
 |<kbd>Enter</kbd>|Perform an action on the highlighted UI element, to be implemented|
 |<kbd>Num1-5</kbd>|Perform an action to mark priorities' colors of items (TODO), to be implemented|
-
-All credits to @tsoding for live session co-coding
