@@ -15,7 +15,7 @@
 ### On Linux: Run in rust directory
 
 ```console
-    cargo run TODO
+    $ cargo run TODO
 ```
 
 - External dependencies: ncurses
@@ -25,7 +25,7 @@
 ![Windows_v1](/rust-todo/official-v1/TODOwin-app.png?raw=true "Running on Windows terminal")
 
 ```console
-    windows_todo.exe TODO
+    $ windows_todo.exe TODO
 ```
 
 - External dependencies: pancurses (which points to PDcurses for windows and ncurses for linux)
