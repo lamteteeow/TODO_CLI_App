@@ -1,3 +1,6 @@
+TODO: first
+TODO: second
+TODO: first
 TODO: second
 TODO: second
 TODO: second
@@ -5,9 +8,9 @@ TODO: first
 TODO: first
 TODO: first
 TODO: first
-TODO: first
-TODO: first
-TODO: second
+DONE: first
+DONE: first
+DONE: second
 DONE: first
 DONE: now
 DONE: second
@@ -16,6 +19,3 @@ DONE: second
 DONE: second
 DONE: second
 DONE: now
-DONE: first
-DONE: second
-DONE: first

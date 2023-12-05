@@ -15,7 +15,7 @@
 ### On Linux: Run in rust directory
 
 ```console
-    $ cargo run TODO
+    cargo run TODO
 ```
 
 - External dependencies: ncurses
@@ -25,7 +25,7 @@
 ![Windows_v1](/rust-todo/official-v1/TODOwin-app.png?raw=true "Running on Windows terminal")
 
 ```console
-    $ windows_todo.exe TODO
+    windows_todo.exe TODO
 ```
 
 - External dependencies: pancurses (which points to PDcurses for windows and ncurses for linux)
@@ -36,7 +36,7 @@
 |---|---|
 |<kbd>w</kbd>, <kbd>s</kbd>|Move cursor up and down|
 |<kbd>Tab</kbd>|Switch between the TODO and DONE panels|
-|<kbd>q</kbd>|Quit|
+|<kbd>q</kbd>|Save and Quit|
 |<kbd>Shift+W</kbd>, <kbd>Shift+S</kbd>|Drag the current item up and down|
 |<kbd>g</kbd>, <kbd>G</kbd> | Jump to the start, end of the current item list, to be implemented|
 |<kbd>r</kbd>|Rename the current item, to be implemented|

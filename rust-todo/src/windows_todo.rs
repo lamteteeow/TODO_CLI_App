@@ -119,9 +119,9 @@ impl Ui {
         let pos = layout.available_pos();
 
         window.mv(pos.y, pos.x);
-        window.attron(COLOR_PAIR(pair as u64));
+        window.attron(COLOR_PAIR(pair as u64)); //for windows is u64 instead of u32
         window.addstr(text);
-        window.attroff(COLOR_PAIR(pair as u64));
+        window.attroff(COLOR_PAIR(pair as u64)); //for windows is u64 instead of u32
 
         layout.add_widget(Vec2::new(width as i32, 1));
     }

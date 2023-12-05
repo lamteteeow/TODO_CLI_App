@@ -122,7 +122,7 @@ impl Ui {
         addstr(text);
         attroff(COLOR_PAIR(pair));
 
-        layout.add_widget(Vec2::new(width as i32, 1));
+        layout.add_widget(Vec2::new(width, 1));
     }
 
     fn end_layout(&mut self) {
@@ -142,6 +142,7 @@ impl Ui {
             .expect("Unbalanced UI::begin() and UI::end() calls.");
     }
 
+    #[allow(dead_code)]
     fn label(&mut self, text: &str, pair: i16) {
         self.label_fixed_width(text, text.len() as i32, pair);
     }
@@ -262,7 +263,7 @@ fn load_state(todos: &mut Vec<String>, dones: &mut Vec<String>, file_path: &str)
 }
 
 fn save_state(todos: &[String], dones: &[String], file_path: &str) {
-    let mut file = File::create(&file_path).unwrap();
+    let mut file = File::create(file_path).unwrap();
     for todo in todos.iter() {
         writeln!(file, "TODO: {}", todo).unwrap();
     }

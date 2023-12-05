@@ -8,7 +8,7 @@ default-run = "linux_todo" # src/linux_todo.rs
 
 [dependencies]
 #(points to either ncurses or pdcurses-sys respectively)
-pancurses = { version = "0.17.0", features = ["win32a"] }  
+pancurses = { version = "0.17.0", features = ["win32a"] }
 
 [[bin]]
 name = "windows_todo"

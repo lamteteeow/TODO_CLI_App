@@ -31,3 +31,5 @@ Trying to set up in Windows but did not go anywhere:
 
 => Add [target.'cfg(target_os = "windows")'.dependencies] and [target.'cfg(target_os = "linux")'.dependencies] for specific dependencies (in Cargo.toml)
 => Add default-run = "a" to [package] (in Cargo.toml)
+
+=> Reprogram src code of windows_todo.rs using pancurses lib instead => Worked!
